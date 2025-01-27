@@ -311,6 +311,8 @@ def _adjust_batch_size(
         pass
 
     new_size = value if value is not None else int(batch_size * factor)
+    if new_size >= combined_dataset_length:
+        new_size = combined_dataset_length
     if desc:
         rank_zero_info(f"Batch size {batch_size} {desc}, trying batch size {new_size}")
     changed = new_size != batch_size

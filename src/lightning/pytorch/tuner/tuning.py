@@ -93,6 +93,13 @@ class Tuner:
         batch_size_finder._early_exit = True
         self._trainer.callbacks = [batch_size_finder] + self._trainer.callbacks
 
+        # Check if the batch size exceeds dataset length
+        combined_loader = self._trainer._active_loop._combined_loader
+        if combined_loader:
+            dataset_length = combined_loader._dataset_length()
+            if batch_size_finder.optimal_batch_size >= dataset_length:
+                batch_size_finder.optimal_batch_size = dataset_length
+
         if method == "fit":
             self._trainer.fit(model, train_dataloaders, val_dataloaders, datamodule)
         elif method == "validate":

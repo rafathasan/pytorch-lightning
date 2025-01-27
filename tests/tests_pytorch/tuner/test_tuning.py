@@ -47,3 +47,45 @@ def test_tuner_with_already_configured_learning_rate_finder():
 
     with pytest.raises(ValueError, match=r"Trainer is already configured with a `LearningRateFinder`"):
         tuner.lr_find(model)
+
+
+def test_tuner_batch_size_does_not_exceed_dataset_length(tmp_path):
+    """Test that the batch size does not exceed the dataset length."""
+    class CustomBoringModel(BoringModel):
+        def __init__(self):
+            super().__init__()
+            self.save_hyperparameters()
+
+    model = CustomBoringModel()
+    trainer = Trainer(default_root_dir=tmp_path, max_epochs=1)
+    tuner = Tuner(trainer)
+
+    # Mock the combined loader to return a small dataset length
+    trainer._active_loop = trainer.fit_loop
+    trainer._active_loop.setup_data()
+    combined_loader = trainer._active_loop._combined_loader
+    combined_loader._dataset_length = lambda: 5
+
+    optimal_batch_size = tuner.scale_batch_size(model)
+    assert optimal_batch_size == 5, "Batch size should not exceed the dataset length"
+
+
+def test_tuner_batch_size_scaling_with_small_dataset(tmp_path):
+    """Test that the batch size scaling works correctly with a small dataset."""
+    class CustomBoringModel(BoringModel):
+        def __init__(self):
+            super().__init__()
+            self.save_hyperparameters()
+
+    model = CustomBoringModel()
+    trainer = Trainer(default_root_dir=tmp_path, max_epochs=1)
+    tuner = Tuner(trainer)
+
+    # Mock the combined loader to return a small dataset length
+    trainer._active_loop = trainer.fit_loop
+    trainer._active_loop.setup_data()
+    combined_loader = trainer._active_loop._combined_loader
+    combined_loader._dataset_length = lambda: 10
+
+    optimal_batch_size = tuner.scale_batch_size(model)
+    assert optimal_batch_size <= 10, "Batch size should not exceed the dataset length"
